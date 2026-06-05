@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 cd "$(dirname "$0")/../.."
-python scripts/bvh_to_robot.py --bvh_file motion_data/TPOS.bvh --format lafan1 --robot ultra --rate_limit --loop "$@"
-# python scripts/bvh_to_robot.py --bvh_file motion_data/selected_motions/run1_subject5.bvh --format lafan1 --robot ultra --rate_limit --loop
+# python scripts/bvh_to_robot.py --bvh_file motion_data/TPOS.bvh --format lafan1 --robot ultra --rate_limit --loop "$@"
+python scripts/bvh_to_robot.py --bvh_file motion_data/selected_motions/run1_subject5.bvh --format lafan1 --robot ultra --rate_limit --loop "$@"
 
 
 
