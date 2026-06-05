@@ -60,6 +60,13 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--headless",
+        action="store_true",
+        default=False,
+        help="Run retargeting without opening the realtime viewer.",
+    )
+
+    parser.add_argument(
         "--save_path",
         default=None,
         help="Path to save the robot motion.",
@@ -93,14 +100,16 @@ if __name__ == "__main__":
 
     motion_fps = args.motion_fps
     
-    robot_motion_viewer = RobotMotionViewer(robot_type=args.robot,
-                                            motion_fps=motion_fps,
-                                            transparent_robot=0,
-                                            record_video=args.record_video,
-                                            video_path=args.video_path,
-                                            # video_width=2080,
-                                            # video_height=1170
-                                            )
+    robot_motion_viewer = None
+    if not args.headless:
+        robot_motion_viewer = RobotMotionViewer(robot_type=args.robot,
+                                                motion_fps=motion_fps,
+                                                transparent_robot=0,
+                                                record_video=args.record_video,
+                                                video_path=args.video_path,
+                                                # video_width=2080,
+                                                # video_height=1170
+                                                )
     
     # FPS measurement variables
     fps_counter = 0
@@ -139,15 +148,16 @@ if __name__ == "__main__":
         
 
         # visualize
-        robot_motion_viewer.step(
-            root_pos=qpos[:3],
-            root_rot=qpos[3:7],
-            dof_pos=qpos[7:],
-            human_motion_data=retargeter.scaled_human_data,
-            rate_limit=args.rate_limit,
-            follow_camera=True,
-            # human_pos_offset=np.array([0.0, 0.0, 0.0])
-        )
+        if robot_motion_viewer is not None:
+            robot_motion_viewer.step(
+                root_pos=qpos[:3],
+                root_rot=qpos[3:7],
+                dof_pos=qpos[7:],
+                human_motion_data=retargeter.scaled_human_data,
+                rate_limit=args.rate_limit,
+                follow_camera=True,
+                # human_pos_offset=np.array([0.0, 0.0, 0.0])
+            )
 
         if args.loop:
             i = (i + 1) % len(lafan1_data_frames)
@@ -184,5 +194,6 @@ if __name__ == "__main__":
     # Close progress bar
     pbar.close()
     
-    robot_motion_viewer.close()
+    if robot_motion_viewer is not None:
+        robot_motion_viewer.close()
        
