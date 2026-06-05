@@ -44,29 +44,17 @@ def draw_frame(
         v.user_scn.ngeom += 1
 
 
-def build_skeleton_joint_positions(
-    motion_data,
-    joint_names,
-    pos_offset=None,
-    root_name=None,
-    position_scale=1.0,
-):
+def build_skeleton_joint_positions(motion_data, joint_names, pos_offset=None):
     if pos_offset is None:
         pos_offset = np.zeros(3)
     pos_offset = np.asarray(pos_offset)
-    root_pos = None
-    if root_name is not None and root_name in motion_data:
-        root_pos = np.asarray(motion_data[root_name][0])
 
     joint_positions = {}
     for joint_name in joint_names:
         if joint_name not in motion_data:
             continue
         pos, _ = motion_data[joint_name]
-        pos = np.asarray(pos)
-        if root_pos is not None:
-            pos = root_pos + (pos - root_pos) * position_scale
-        joint_positions[joint_name] = pos + pos_offset
+        joint_positions[joint_name] = np.asarray(pos) + pos_offset
     return joint_positions
 
 
@@ -76,19 +64,11 @@ def build_skeleton_bone_segments(
     parents,
     pos_offset=None,
     connect_to_nearest_available=False,
-    root_name=None,
-    position_scale=1.0,
 ):
     if len(joint_names) != len(parents):
         raise ValueError("joint_names and parents must have the same length")
 
-    joint_positions = build_skeleton_joint_positions(
-        motion_data,
-        joint_names,
-        pos_offset,
-        root_name=root_name,
-        position_scale=position_scale,
-    )
+    joint_positions = build_skeleton_joint_positions(motion_data, joint_names, pos_offset)
     segments = []
     for child_index, parent_index in enumerate(parents):
         if parent_index < 0:
@@ -115,8 +95,6 @@ def normalize_skeleton_payload(payload):
     normalized.setdefault("show_frames", False)
     normalized.setdefault("frame_scale", 0.025)
     normalized.setdefault("frame_arrow_width", 0.0015)
-    normalized.setdefault("root_name", None)
-    normalized.setdefault("position_scale", 1.0)
     normalized["pos_offset"] = np.asarray(normalized["pos_offset"])
     return normalized
 
@@ -134,16 +112,8 @@ def _draw_skeleton(
     show_frames=False,
     frame_scale=0.025,
     frame_arrow_width=0.0015,
-    root_name=None,
-    position_scale=1.0,
 ):
-    joint_positions = build_skeleton_joint_positions(
-        motion_data,
-        joint_names,
-        pos_offset,
-        root_name=root_name,
-        position_scale=position_scale,
-    )
+    joint_positions = build_skeleton_joint_positions(motion_data, joint_names, pos_offset)
     if pos_offset is None:
         pos_offset = np.zeros(3)
     pos_offset = np.asarray(pos_offset)
@@ -180,8 +150,6 @@ def _draw_skeleton(
         parents,
         pos_offset,
         connect_to_nearest_available=connect_to_nearest_available,
-        root_name=root_name,
-        position_scale=position_scale,
     ):
         geom = v.user_scn.geoms[v.user_scn.ngeom]
         mj.mjv_initGeom(
@@ -361,8 +329,6 @@ class RobotMotionViewer:
                     show_frames=payload["show_frames"],
                     frame_scale=payload["frame_scale"],
                     frame_arrow_width=payload["frame_arrow_width"],
-                    root_name=payload["root_name"],
-                    position_scale=payload["position_scale"],
                 )
 
         self.viewer.sync()

@@ -64,8 +64,9 @@ def make_human_skeleton_payloads(raw_frame, scaled_frame, metadata):
             "joint_radius": 0.009,
             "bone_width": 0.005,
             "connect_to_nearest_available": True,
-            "root_name": metadata["joint_names"][0],
-            "position_scale": 0.5,
+            "show_frames": True,
+            "frame_scale": 0.03,
+            "frame_arrow_width": 0.0015,
         },
     ]
 
