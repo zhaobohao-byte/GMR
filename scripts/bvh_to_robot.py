@@ -52,6 +52,9 @@ def make_human_skeleton_payloads(raw_frame, scaled_frame, metadata):
             "joint_radius": 0.016,
             "bone_width": 0.008,
             "pos_offset": raw_pos_offset,
+            "show_frames": True,
+            "frame_scale": 0.06,
+            "frame_arrow_width": 0.003,
         },
         {
             "motion_data": scaled_frame,

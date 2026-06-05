@@ -92,6 +92,9 @@ def normalize_skeleton_payload(payload):
     normalized.setdefault("bone_width", 0.01)
     normalized.setdefault("pos_offset", np.zeros(3))
     normalized.setdefault("connect_to_nearest_available", False)
+    normalized.setdefault("show_frames", False)
+    normalized.setdefault("frame_scale", 0.05)
+    normalized.setdefault("frame_arrow_width", 0.003)
     normalized["pos_offset"] = np.asarray(normalized["pos_offset"])
     return normalized
 
@@ -106,8 +109,15 @@ def _draw_skeleton(
     bone_width=0.01,
     pos_offset=None,
     connect_to_nearest_available=False,
+    show_frames=False,
+    frame_scale=0.05,
+    frame_arrow_width=0.003,
 ):
     joint_positions = build_skeleton_joint_positions(motion_data, joint_names, pos_offset)
+    if pos_offset is None:
+        pos_offset = np.zeros(3)
+    pos_offset = np.asarray(pos_offset)
+
     for pos in joint_positions.values():
         geom = v.user_scn.geoms[v.user_scn.ngeom]
         mj.mjv_initGeom(
@@ -119,6 +129,20 @@ def _draw_skeleton(
             rgba=rgba,
         )
         v.user_scn.ngeom += 1
+
+    if show_frames:
+        for joint_name in joint_names:
+            if joint_name not in motion_data:
+                continue
+            pos, rot = motion_data[joint_name]
+            draw_frame(
+                np.asarray(pos),
+                R.from_quat(rot, scalar_first=True).as_matrix(),
+                v,
+                frame_scale,
+                pos_offset=pos_offset,
+                arrow_width=frame_arrow_width,
+            )
 
     for _, _, parent_pos, child_pos in build_skeleton_bone_segments(
         motion_data,
@@ -302,6 +326,9 @@ class RobotMotionViewer:
                     bone_width=payload["bone_width"],
                     pos_offset=payload["pos_offset"],
                     connect_to_nearest_available=payload["connect_to_nearest_available"],
+                    show_frames=payload["show_frames"],
+                    frame_scale=payload["frame_scale"],
+                    frame_arrow_width=payload["frame_arrow_width"],
                 )
 
         self.viewer.sync()
