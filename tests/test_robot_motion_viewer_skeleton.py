@@ -50,6 +50,26 @@ def test_build_skeleton_bone_segments_skips_missing_parent_or_child():
     np.testing.assert_allclose(child_pos, np.array([0.0, 0.0, 1.5]))
 
 
+def test_build_skeleton_bone_segments_can_connect_to_nearest_available_ancestor():
+    motion_data = {
+        "Hips": (np.array([0.0, 0.0, 1.0]), np.array([1.0, 0.0, 0.0, 0.0])),
+        "Spine2": (np.array([0.0, 0.0, 1.5]), np.array([1.0, 0.0, 0.0, 0.0])),
+        "LeftArm": (np.array([0.3, 0.0, 1.45]), np.array([1.0, 0.0, 0.0, 0.0])),
+    }
+
+    segments = build_skeleton_bone_segments(
+        motion_data,
+        joint_names=["Hips", "Spine", "Spine1", "Spine2", "LeftShoulder", "LeftArm"],
+        parents=np.array([-1, 0, 1, 2, 3, 4]),
+        connect_to_nearest_available=True,
+    )
+
+    assert [(parent_name, child_name) for parent_name, child_name, _, _ in segments] == [
+        ("Hips", "Spine2"),
+        ("Spine2", "LeftArm"),
+    ]
+
+
 def test_build_skeleton_bone_segments_rejects_mismatched_hierarchy_lengths():
     with pytest.raises(ValueError, match="joint_names and parents must have the same length"):
         build_skeleton_bone_segments(
@@ -144,3 +164,25 @@ def test_make_human_skeleton_payloads_returns_raw_and_scaled_overlays():
     assert payloads[1]["motion_data"] is scaled_frame
     assert payloads[0]["joint_names"] == ["Root"]
     np.testing.assert_array_equal(payloads[1]["parents"], np.array([-1]))
+
+
+def test_make_human_skeleton_payloads_adds_scaled_helper_feet_and_compressed_edges():
+    raw_frame = {
+        "Hips": (np.array([0.0, 0.0, 1.0]), np.array([1.0, 0.0, 0.0, 0.0])),
+    }
+    scaled_frame = {
+        "Hips": (np.array([0.0, 0.0, 1.0]), np.array([1.0, 0.0, 0.0, 0.0])),
+        "LeftLeg": (np.array([0.1, 0.0, 0.5]), np.array([1.0, 0.0, 0.0, 0.0])),
+        "LeftFootMod": (np.array([0.2, 0.0, 0.1]), np.array([1.0, 0.0, 0.0, 0.0])),
+    }
+    metadata = {
+        "joint_names": ["Hips", "LeftUpLeg", "LeftLeg", "LeftFoot"],
+        "parents": np.array([-1, 0, 1, 2]),
+    }
+
+    payloads = make_human_skeleton_payloads(raw_frame, scaled_frame, metadata)
+    scaled_payload = payloads[1]
+
+    assert scaled_payload["connect_to_nearest_available"] is True
+    assert scaled_payload["joint_names"] == ["Hips", "LeftUpLeg", "LeftLeg", "LeftFoot", "LeftFootMod"]
+    np.testing.assert_array_equal(scaled_payload["parents"], np.array([-1, 0, 1, 2, 2]))

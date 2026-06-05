@@ -58,7 +58,13 @@ def build_skeleton_joint_positions(motion_data, joint_names, pos_offset=None):
     return joint_positions
 
 
-def build_skeleton_bone_segments(motion_data, joint_names, parents, pos_offset=None):
+def build_skeleton_bone_segments(
+    motion_data,
+    joint_names,
+    parents,
+    pos_offset=None,
+    connect_to_nearest_available=False,
+):
     if len(joint_names) != len(parents):
         raise ValueError("joint_names and parents must have the same length")
 
@@ -67,6 +73,11 @@ def build_skeleton_bone_segments(motion_data, joint_names, parents, pos_offset=N
     for child_index, parent_index in enumerate(parents):
         if parent_index < 0:
             continue
+        if connect_to_nearest_available:
+            while parent_index >= 0 and joint_names[int(parent_index)] not in joint_positions:
+                parent_index = parents[int(parent_index)]
+            if parent_index < 0:
+                continue
         parent_name = joint_names[int(parent_index)]
         child_name = joint_names[child_index]
         if parent_name not in joint_positions or child_name not in joint_positions:
@@ -80,6 +91,7 @@ def normalize_skeleton_payload(payload):
     normalized.setdefault("joint_radius", 0.018)
     normalized.setdefault("bone_width", 0.01)
     normalized.setdefault("pos_offset", np.zeros(3))
+    normalized.setdefault("connect_to_nearest_available", False)
     normalized["pos_offset"] = np.asarray(normalized["pos_offset"])
     return normalized
 
@@ -93,6 +105,7 @@ def _draw_skeleton(
     joint_radius=0.018,
     bone_width=0.01,
     pos_offset=None,
+    connect_to_nearest_available=False,
 ):
     joint_positions = build_skeleton_joint_positions(motion_data, joint_names, pos_offset)
     for pos in joint_positions.values():
@@ -112,6 +125,7 @@ def _draw_skeleton(
         joint_names,
         parents,
         pos_offset,
+        connect_to_nearest_available=connect_to_nearest_available,
     ):
         geom = v.user_scn.geoms[v.user_scn.ngeom]
         mj.mjv_initGeom(
@@ -287,6 +301,7 @@ class RobotMotionViewer:
                     joint_radius=payload["joint_radius"],
                     bone_width=payload["bone_width"],
                     pos_offset=payload["pos_offset"],
+                    connect_to_nearest_available=payload["connect_to_nearest_available"],
                 )
 
         self.viewer.sync()

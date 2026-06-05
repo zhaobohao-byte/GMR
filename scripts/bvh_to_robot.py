@@ -7,9 +7,34 @@ import os
 import numpy as np
 
 
+def make_scaled_skeleton_metadata(scaled_frame, metadata):
+    joint_names = list(metadata["joint_names"])
+    parents = list(metadata["parents"])
+    joint_name_to_index = {joint_name: idx for idx, joint_name in enumerate(joint_names)}
+    helper_parent_names = {
+        "LeftFootMod": "LeftLeg",
+        "RightFootMod": "RightLeg",
+    }
+
+    for helper_name, parent_name in helper_parent_names.items():
+        if helper_name not in scaled_frame or helper_name in joint_name_to_index:
+            continue
+        if parent_name not in joint_name_to_index:
+            continue
+        joint_name_to_index[helper_name] = len(joint_names)
+        joint_names.append(helper_name)
+        parents.append(joint_name_to_index[parent_name])
+
+    return {
+        "joint_names": joint_names,
+        "parents": np.asarray(parents, dtype=int),
+    }
+
+
 def make_human_skeleton_payloads(raw_frame, scaled_frame, metadata):
     joint_names = metadata["joint_names"]
     parents = metadata["parents"]
+    scaled_metadata = make_scaled_skeleton_metadata(scaled_frame, metadata)
     return [
         {
             "motion_data": raw_frame,
@@ -21,11 +46,12 @@ def make_human_skeleton_payloads(raw_frame, scaled_frame, metadata):
         },
         {
             "motion_data": scaled_frame,
-            "joint_names": joint_names,
-            "parents": parents,
+            "joint_names": scaled_metadata["joint_names"],
+            "parents": scaled_metadata["parents"],
             "rgba": [0.05, 0.75, 1.0, 0.75],
             "joint_radius": 0.018,
             "bone_width": 0.01,
+            "connect_to_nearest_available": True,
         },
     ]
 
