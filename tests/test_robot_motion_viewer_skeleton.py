@@ -205,10 +205,10 @@ def test_make_human_skeleton_payloads_adds_scaled_helper_feet_and_compressed_edg
     np.testing.assert_array_equal(scaled_payload["parents"], np.array([-1, 0, 1, 2, 2]))
 
 
-def test_make_robot_frame_overlay_options_emphasizes_json_frames_with_skeleton():
+def test_make_robot_frame_overlay_options_emphasizes_json_frame_axes_with_skeleton():
     options = make_robot_frame_overlay_options(show_skeleton=True, show_robot_body_name=False)
 
-    assert options["show_robot_body_name"] is True
+    assert options["show_robot_body_name"] is False
     assert options["robot_frame_scale"] == pytest.approx(0.12)
 
 

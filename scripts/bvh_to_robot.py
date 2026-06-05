@@ -67,7 +67,7 @@ def make_human_skeleton_payloads(raw_frame, scaled_frame, metadata):
 
 def make_robot_frame_overlay_options(show_skeleton=False, show_robot_body_name=False):
     return {
-        "show_robot_body_name": show_robot_body_name or show_skeleton,
+        "show_robot_body_name": show_robot_body_name,
         "robot_frame_scale": 0.12 if show_skeleton else 0.06,
     }
 
