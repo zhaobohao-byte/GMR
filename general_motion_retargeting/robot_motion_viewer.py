@@ -75,6 +75,63 @@ def build_skeleton_bone_segments(motion_data, joint_names, parents, pos_offset=N
     return segments
 
 
+def normalize_skeleton_payload(payload):
+    normalized = dict(payload)
+    normalized.setdefault("joint_radius", 0.018)
+    normalized.setdefault("bone_width", 0.01)
+    normalized.setdefault("pos_offset", np.zeros(3))
+    normalized["pos_offset"] = np.asarray(normalized["pos_offset"])
+    return normalized
+
+
+def _draw_skeleton(
+    v,
+    motion_data,
+    joint_names,
+    parents,
+    rgba,
+    joint_radius=0.018,
+    bone_width=0.01,
+    pos_offset=None,
+):
+    joint_positions = build_skeleton_joint_positions(motion_data, joint_names, pos_offset)
+    for pos in joint_positions.values():
+        geom = v.user_scn.geoms[v.user_scn.ngeom]
+        mj.mjv_initGeom(
+            geom,
+            type=mj.mjtGeom.mjGEOM_SPHERE,
+            size=[joint_radius, 0.0, 0.0],
+            pos=pos,
+            mat=np.eye(3).flatten(),
+            rgba=rgba,
+        )
+        v.user_scn.ngeom += 1
+
+    for _, _, parent_pos, child_pos in build_skeleton_bone_segments(
+        motion_data,
+        joint_names,
+        parents,
+        pos_offset,
+    ):
+        geom = v.user_scn.geoms[v.user_scn.ngeom]
+        mj.mjv_initGeom(
+            geom,
+            type=mj.mjtGeom.mjGEOM_CAPSULE,
+            size=[bone_width, 0.0, 0.0],
+            pos=np.zeros(3),
+            mat=np.eye(3).flatten(),
+            rgba=rgba,
+        )
+        mj.mjv_connector(
+            geom,
+            type=mj.mjtGeom.mjGEOM_CAPSULE,
+            width=bone_width,
+            from_=parent_pos,
+            to=child_pos,
+        )
+        v.user_scn.ngeom += 1
+
+
 def get_gmr_robot_body_names(retargeter):
     """Return robot bodies that are enabled and weighted in GMR IK tasks."""
     robot_body_names = []
@@ -160,6 +217,7 @@ class RobotMotionViewer:
             robot_body_names=None,
             show_robot_body_name=False,
             robot_frame_scale=0.06,
+            human_skeletons=None,
             # rate limit
             rate_limit=True, 
             follow_camera=False,
@@ -188,7 +246,7 @@ class RobotMotionViewer:
             # self.viewer.cam.azimuth = 180    # 正面朝向机器人
             self._camera_initialized = True
         
-        if human_motion_data is not None or robot_body_names is not None:
+        if human_motion_data is not None or robot_body_names is not None or human_skeletons is not None:
             # Clean custom geometry
             self.viewer.user_scn.ngeom = 0
 
@@ -216,6 +274,20 @@ class RobotMotionViewer:
                     joint_name=robot_body_name if show_robot_body_name else None,
                     arrow_width=0.003,
                     )
+
+        if human_skeletons is not None:
+            for skeleton_payload in human_skeletons:
+                payload = normalize_skeleton_payload(skeleton_payload)
+                _draw_skeleton(
+                    self.viewer,
+                    motion_data=payload["motion_data"],
+                    joint_names=payload["joint_names"],
+                    parents=payload["parents"],
+                    rgba=payload["rgba"],
+                    joint_radius=payload["joint_radius"],
+                    bone_width=payload["bone_width"],
+                    pos_offset=payload["pos_offset"],
+                )
 
         self.viewer.sync()
         if rate_limit is True:

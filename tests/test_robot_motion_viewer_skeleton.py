@@ -8,6 +8,7 @@ sys.modules.setdefault("mink", types.SimpleNamespace())
 from general_motion_retargeting.robot_motion_viewer import (
     build_skeleton_bone_segments,
     build_skeleton_joint_positions,
+    normalize_skeleton_payload,
 )
 
 
@@ -55,3 +56,18 @@ def test_build_skeleton_bone_segments_rejects_mismatched_hierarchy_lengths():
             joint_names=["Root", "Chest"],
             parents=np.array([-1]),
         )
+
+
+def test_normalize_skeleton_payload_fills_defaults():
+    payload = normalize_skeleton_payload(
+        {
+            "motion_data": {},
+            "joint_names": ["Root"],
+            "parents": np.array([-1]),
+            "rgba": [1.0, 0.0, 0.0, 0.5],
+        }
+    )
+
+    assert payload["joint_radius"] == pytest.approx(0.018)
+    assert payload["bone_width"] == pytest.approx(0.01)
+    np.testing.assert_allclose(payload["pos_offset"], np.zeros(3))
