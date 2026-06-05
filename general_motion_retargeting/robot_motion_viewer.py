@@ -88,8 +88,8 @@ def build_skeleton_bone_segments(
 
 def normalize_skeleton_payload(payload):
     normalized = dict(payload)
-    normalized.setdefault("joint_radius", 0.018)
-    normalized.setdefault("bone_width", 0.01)
+    normalized.setdefault("joint_radius", 0.009)
+    normalized.setdefault("bone_width", 0.005)
     normalized.setdefault("pos_offset", np.zeros(3))
     normalized.setdefault("connect_to_nearest_available", False)
     normalized.setdefault("show_frames", False)
@@ -105,8 +105,8 @@ def _draw_skeleton(
     joint_names,
     parents,
     rgba,
-    joint_radius=0.018,
-    bone_width=0.01,
+    joint_radius=0.009,
+    bone_width=0.005,
     pos_offset=None,
     connect_to_nearest_available=False,
     show_frames=False,
