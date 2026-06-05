@@ -31,10 +31,18 @@ def make_scaled_skeleton_metadata(scaled_frame, metadata):
     }
 
 
+def make_raw_skeleton_pos_offset(raw_frame, scaled_frame, metadata):
+    root_name = metadata["joint_names"][0]
+    if root_name not in raw_frame or root_name not in scaled_frame:
+        return np.zeros(3)
+    return np.asarray(scaled_frame[root_name][0]) - np.asarray(raw_frame[root_name][0])
+
+
 def make_human_skeleton_payloads(raw_frame, scaled_frame, metadata):
     joint_names = metadata["joint_names"]
     parents = metadata["parents"]
     scaled_metadata = make_scaled_skeleton_metadata(scaled_frame, metadata)
+    raw_pos_offset = make_raw_skeleton_pos_offset(raw_frame, scaled_frame, metadata)
     return [
         {
             "motion_data": raw_frame,
@@ -43,6 +51,7 @@ def make_human_skeleton_payloads(raw_frame, scaled_frame, metadata):
             "rgba": [1.0, 0.45, 0.05, 0.45],
             "joint_radius": 0.016,
             "bone_width": 0.008,
+            "pos_offset": raw_pos_offset,
         },
         {
             "motion_data": scaled_frame,

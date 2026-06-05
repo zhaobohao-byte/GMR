@@ -164,6 +164,23 @@ def test_make_human_skeleton_payloads_returns_raw_and_scaled_overlays():
     assert payloads[1]["motion_data"] is scaled_frame
     assert payloads[0]["joint_names"] == ["Root"]
     np.testing.assert_array_equal(payloads[1]["parents"], np.array([-1]))
+    np.testing.assert_allclose(payloads[0]["pos_offset"], np.array([0.0, 0.0, 0.2]))
+    assert "pos_offset" not in payloads[1]
+
+
+def test_make_human_skeleton_payloads_aligns_raw_root_to_scaled_root():
+    raw_frame = {
+        "Hips": (np.array([1.0, 2.0, 1.0]), np.array([1.0, 0.0, 0.0, 0.0])),
+    }
+    scaled_frame = {
+        "Hips": (np.array([1.3, 2.5, 1.2]), np.array([1.0, 0.0, 0.0, 0.0])),
+    }
+    metadata = {"joint_names": ["Hips"], "parents": np.array([-1])}
+
+    payloads = make_human_skeleton_payloads(raw_frame, scaled_frame, metadata)
+
+    np.testing.assert_allclose(payloads[0]["pos_offset"], np.array([0.3, 0.5, 0.2]))
+    assert "pos_offset" not in payloads[1]
 
 
 def test_make_human_skeleton_payloads_adds_scaled_helper_feet_and_compressed_edges():
