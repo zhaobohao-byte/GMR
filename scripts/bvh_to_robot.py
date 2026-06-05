@@ -3,6 +3,7 @@ import pathlib
 import time
 from general_motion_retargeting import GeneralMotionRetargeting as GMR
 from general_motion_retargeting import RobotMotionViewer
+from general_motion_retargeting.robot_motion_viewer import get_gmr_robot_body_names
 from general_motion_retargeting.utils.lafan1 import load_bvh_file
 from rich import print
 from tqdm import tqdm
@@ -100,6 +101,8 @@ if __name__ == "__main__":
 
     motion_fps = args.motion_fps
     
+    gmr_robot_body_names = get_gmr_robot_body_names(retargeter)
+
     robot_motion_viewer = None
     if not args.headless:
         robot_motion_viewer = RobotMotionViewer(robot_type=args.robot,
@@ -154,6 +157,7 @@ if __name__ == "__main__":
                 root_rot=qpos[3:7],
                 dof_pos=qpos[7:],
                 human_motion_data=retargeter.scaled_human_data,
+                robot_body_names=gmr_robot_body_names,
                 rate_limit=args.rate_limit,
                 follow_camera=True,
                 # human_pos_offset=np.array([0.0, 0.0, 0.0])

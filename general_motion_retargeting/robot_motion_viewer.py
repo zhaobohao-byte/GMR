@@ -18,6 +18,7 @@ def draw_frame(
     joint_name=None,
     orientation_correction=R.from_euler("xyz", [0, 0, 0]),
     pos_offset=np.array([0, 0, 0]),
+    arrow_width=0.005,
 ):
     rgba_list = [[1, 0, 0, 1], [0, 1, 0, 1], [0, 0, 1, 1]]
     for i in range(3):
@@ -36,11 +37,31 @@ def draw_frame(
         mj.mjv_connector(
             v.user_scn.geoms[v.user_scn.ngeom],
             type=mj.mjtGeom.mjGEOM_ARROW,
-            width=0.005,
+            width=arrow_width,
             from_=pos + pos_offset,
             to=pos + pos_offset + size * (mat @ fix)[:, i],
         )
         v.user_scn.ngeom += 1
+
+
+def get_gmr_robot_body_names(retargeter):
+    """Return robot bodies that are enabled and weighted in GMR IK tasks."""
+    robot_body_names = []
+    task_tables = (
+        (retargeter.use_ik_match_table1, retargeter.ik_match_table1),
+        (retargeter.use_ik_match_table2, retargeter.ik_match_table2),
+    )
+
+    for use_table, ik_match_table in task_tables:
+        if not use_table:
+            continue
+        for robot_body_name, entry in ik_match_table.items():
+            _, pos_weight, rot_weight, _, _ = entry
+            if (pos_weight != 0 or rot_weight != 0) and robot_body_name not in robot_body_names:
+                robot_body_names.append(robot_body_name)
+
+    return robot_body_names
+
 
 class RobotMotionViewer:
     def __init__(self,
@@ -104,6 +125,10 @@ class RobotMotionViewer:
             human_point_scale=0.1,
             # human pos offset add for visualization    
             human_pos_offset=np.array([0.0, 0.0, 0]),
+            # robot body frames to compare with GMR targets
+            robot_body_names=None,
+            show_robot_body_name=False,
+            robot_frame_scale=0.06,
             # rate limit
             rate_limit=True, 
             follow_camera=False,
@@ -113,6 +138,7 @@ class RobotMotionViewer:
         also support visualize human motion by providing human_motion_data, to compare with robot motion.
         
         human_motion_data is a dict of {"human body name": (3d global translation, 3d global rotation)}.
+        robot_body_names lists robot body frames to draw from the current MuJoCo state.
 
         if rate_limit is True, the motion will be visualized at the same rate as the motion data.
         else, the motion will be visualized as fast as possible.
@@ -131,9 +157,11 @@ class RobotMotionViewer:
             # self.viewer.cam.azimuth = 180    # 正面朝向机器人
             self._camera_initialized = True
         
-        if human_motion_data is not None:
+        if human_motion_data is not None or robot_body_names is not None:
             # Clean custom geometry
             self.viewer.user_scn.ngeom = 0
+
+        if human_motion_data is not None:
             # Draw the task targets for reference
             for human_body_name, (pos, rot) in human_motion_data.items():
                 draw_frame(
@@ -143,6 +171,19 @@ class RobotMotionViewer:
                     human_point_scale,
                     pos_offset=human_pos_offset,
                     joint_name=human_body_name if show_human_body_name else None
+                    )
+
+        if robot_body_names is not None:
+            # Draw robot link frames used by GMR tasks from the current MuJoCo pose.
+            for robot_body_name in robot_body_names:
+                body_id = self.model.body(robot_body_name).id
+                draw_frame(
+                    self.data.xpos[body_id],
+                    self.data.xmat[body_id].reshape(3, 3),
+                    self.viewer,
+                    robot_frame_scale,
+                    joint_name=robot_body_name if show_robot_body_name else None,
+                    arrow_width=0.003,
                     )
 
         self.viewer.sync()
