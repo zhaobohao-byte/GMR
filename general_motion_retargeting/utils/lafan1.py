@@ -5,7 +5,7 @@ import general_motion_retargeting.utils.lafan_vendor.utils as utils
 from general_motion_retargeting.utils.lafan_vendor.extract import read_bvh
 
 
-def load_bvh_file(bvh_file, format="lafan1"):
+def load_bvh_file(bvh_file, format="lafan1", return_metadata=False):
     """
     Must return a dictionary with the following structure:
     {
@@ -44,6 +44,12 @@ def load_bvh_file(bvh_file, format="lafan1"):
     # human_height = human_height + 0.2  # cm to m
     human_height = 1.75  # cm to m
 
-    return frames, human_height
+    if return_metadata:
+        metadata = {
+            "joint_names": list(data.bones),
+            "parents": np.asarray(data.parents, dtype=int),
+        }
+        return frames, human_height, metadata
 
+    return frames, human_height
 

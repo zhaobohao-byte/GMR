@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 import sys
 import types
+from unittest.mock import patch
 
 sys.modules.setdefault("mink", types.SimpleNamespace())
 
@@ -71,3 +72,56 @@ def test_normalize_skeleton_payload_fills_defaults():
     assert payload["joint_radius"] == pytest.approx(0.018)
     assert payload["bone_width"] == pytest.approx(0.01)
     np.testing.assert_allclose(payload["pos_offset"], np.zeros(3))
+
+
+from general_motion_retargeting.utils.lafan1 import load_bvh_file
+
+
+class FakeAnim:
+    def __init__(self):
+        self.quats = np.zeros((1, 6, 4))
+        self.pos = np.zeros((1, 6, 3))
+        self.parents = np.array([-1, 0, 0, 2, 0, 4])
+        self.bones = ["Root", "Chest", "LeftFoot", "LeftToe", "RightFoot", "RightToe"]
+
+
+def test_load_bvh_file_can_return_hierarchy_metadata():
+    fake_anim = FakeAnim()
+    fake_global_data = (
+        np.array(
+            [
+                [
+                    [1.0, 0.0, 0.0, 0.0],
+                    [1.0, 0.0, 0.0, 0.0],
+                    [1.0, 0.0, 0.0, 0.0],
+                    [1.0, 0.0, 0.0, 0.0],
+                    [1.0, 0.0, 0.0, 0.0],
+                    [1.0, 0.0, 0.0, 0.0],
+                ]
+            ]
+        ),
+        np.array(
+            [
+                [
+                    [0.0, 0.0, 100.0],
+                    [0.0, 0.0, 150.0],
+                    [0.0, 20.0, 10.0],
+                    [0.0, 25.0, 5.0],
+                    [0.0, -20.0, 10.0],
+                    [0.0, -25.0, 5.0],
+                ]
+            ]
+        ),
+    )
+
+    with patch("general_motion_retargeting.utils.lafan1.read_bvh", return_value=fake_anim), patch(
+        "general_motion_retargeting.utils.lafan1.utils.quat_fk",
+        return_value=fake_global_data,
+    ):
+        frames, human_height, metadata = load_bvh_file("fake.bvh", return_metadata=True)
+
+    assert human_height == pytest.approx(1.75)
+    assert metadata["joint_names"] == ["Root", "Chest", "LeftFoot", "LeftToe", "RightFoot", "RightToe"]
+    np.testing.assert_array_equal(metadata["parents"], np.array([-1, 0, 0, 2, 0, 4]))
+    assert "Root" in frames[0]
+    assert "Chest" in frames[0]
