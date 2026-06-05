@@ -48,7 +48,8 @@ def load_smplx_file(smplx_file, smplx_body_model_path):
 
 
 def load_gvhmr_pred_file(gvhmr_pred_file, smplx_body_model_path):
-    gvhmr_pred = torch.load(gvhmr_pred_file)
+    # GVHMR result files contain a pickled dict, so PyTorch 2.6 needs the legacy load mode.
+    gvhmr_pred = torch.load(gvhmr_pred_file, weights_only=False)
     smpl_params_global = gvhmr_pred['smpl_params_global']
     # print(smpl_params_global['body_pose'].shape)
     # print(smpl_params_global['betas'].shape)
