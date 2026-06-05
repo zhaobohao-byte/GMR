@@ -75,6 +75,7 @@ def test_normalize_skeleton_payload_fills_defaults():
 
 
 from general_motion_retargeting.utils.lafan1 import load_bvh_file
+from scripts.bvh_to_robot import make_human_skeleton_payloads
 
 
 class FakeAnim:
@@ -125,3 +126,21 @@ def test_load_bvh_file_can_return_hierarchy_metadata():
     np.testing.assert_array_equal(metadata["parents"], np.array([-1, 0, 0, 2, 0, 4]))
     assert "Root" in frames[0]
     assert "Chest" in frames[0]
+
+
+def test_make_human_skeleton_payloads_returns_raw_and_scaled_overlays():
+    raw_frame = {
+        "Root": (np.array([0.0, 0.0, 1.0]), np.array([1.0, 0.0, 0.0, 0.0])),
+    }
+    scaled_frame = {
+        "Root": (np.array([0.0, 0.0, 1.2]), np.array([1.0, 0.0, 0.0, 0.0])),
+    }
+    metadata = {"joint_names": ["Root"], "parents": np.array([-1])}
+
+    payloads = make_human_skeleton_payloads(raw_frame, scaled_frame, metadata)
+
+    assert len(payloads) == 2
+    assert payloads[0]["motion_data"] is raw_frame
+    assert payloads[1]["motion_data"] is scaled_frame
+    assert payloads[0]["joint_names"] == ["Root"]
+    np.testing.assert_array_equal(payloads[1]["parents"], np.array([-1]))

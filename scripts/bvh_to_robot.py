@@ -1,14 +1,34 @@
 import argparse
 import pathlib
 import time
-from general_motion_retargeting import GeneralMotionRetargeting as GMR
-from general_motion_retargeting import RobotMotionViewer
-from general_motion_retargeting.robot_motion_viewer import get_gmr_robot_body_names
-from general_motion_retargeting.utils.lafan1 import load_bvh_file
 from rich import print
 from tqdm import tqdm
 import os
 import numpy as np
+
+
+def make_human_skeleton_payloads(raw_frame, scaled_frame, metadata):
+    joint_names = metadata["joint_names"]
+    parents = metadata["parents"]
+    return [
+        {
+            "motion_data": raw_frame,
+            "joint_names": joint_names,
+            "parents": parents,
+            "rgba": [1.0, 0.45, 0.05, 0.45],
+            "joint_radius": 0.016,
+            "bone_width": 0.008,
+        },
+        {
+            "motion_data": scaled_frame,
+            "joint_names": joint_names,
+            "parents": parents,
+            "rgba": [0.05, 0.75, 1.0, 0.75],
+            "joint_radius": 0.018,
+            "bone_width": 0.01,
+        },
+    ]
+
 
 if __name__ == "__main__":
     
@@ -68,6 +88,13 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--show_skeleton",
+        action="store_true",
+        default=False,
+        help="Overlay raw and scaled human skeletons in the realtime viewer.",
+    )
+
+    parser.add_argument(
         "--save_path",
         default=None,
         help="Path to save the robot motion.",
@@ -80,6 +107,11 @@ if __name__ == "__main__":
     )
     
     args = parser.parse_args()
+
+    from general_motion_retargeting import GeneralMotionRetargeting as GMR
+    from general_motion_retargeting import RobotMotionViewer
+    from general_motion_retargeting.robot_motion_viewer import get_gmr_robot_body_names
+    from general_motion_retargeting.utils.lafan1 import load_bvh_file
     
     if args.save_path is not None:
         save_dir = os.path.dirname(args.save_path)
@@ -89,7 +121,15 @@ if __name__ == "__main__":
 
     
     # Load SMPLX trajectory
-    lafan1_data_frames, actual_human_height = load_bvh_file(args.bvh_file, format=args.format)
+    if args.show_skeleton:
+        lafan1_data_frames, actual_human_height, skeleton_metadata = load_bvh_file(
+            args.bvh_file,
+            format=args.format,
+            return_metadata=True,
+        )
+    else:
+        lafan1_data_frames, actual_human_height = load_bvh_file(args.bvh_file, format=args.format)
+        skeleton_metadata = None
     
     
     # Initialize the retargeting system
@@ -152,12 +192,23 @@ if __name__ == "__main__":
 
         # visualize
         if robot_motion_viewer is not None:
+            human_skeletons = None
+            if args.show_skeleton:
+                if skeleton_metadata is None:
+                    raise RuntimeError("--show_skeleton requires BVH skeleton metadata")
+                human_skeletons = make_human_skeleton_payloads(
+                    smplx_data,
+                    retargeter.scaled_human_data,
+                    skeleton_metadata,
+                )
+
             robot_motion_viewer.step(
                 root_pos=qpos[:3],
                 root_rot=qpos[3:7],
                 dof_pos=qpos[7:],
                 human_motion_data=retargeter.scaled_human_data,
                 robot_body_names=gmr_robot_body_names,
+                human_skeletons=human_skeletons,
                 rate_limit=args.rate_limit,
                 follow_camera=True,
                 # human_pos_offset=np.array([0.0, 0.0, 0.0])
