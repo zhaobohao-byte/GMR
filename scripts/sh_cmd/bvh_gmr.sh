@@ -8,6 +8,7 @@ python scripts/bvh_to_robot.py \
     --format lafan1 \
     --robot ultra \
     --rate_limit \
+    --show_skeleton \
     --loop "$@"
 
 

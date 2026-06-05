@@ -6,6 +6,7 @@ python scripts/smplx_to_robot.py \
   --robot "unitree_g1" \
   --rate_limit \
   --loop \
+  --show_skeleton \
   "$@"
 
 # 常用命令行参数：

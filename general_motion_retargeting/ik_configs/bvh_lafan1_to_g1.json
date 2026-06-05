@@ -7,7 +7,7 @@
     "use_ik_match_table2": true,
     "human_scale_table": {
         "Hips": 0.9,
-        "Spine2": 0.9,
+        "Spine2": 1.5,
 
         "LeftUpLeg": 0.9,
         "RightUpLeg": 0.9,
