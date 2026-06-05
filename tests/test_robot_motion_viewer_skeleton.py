@@ -30,6 +30,23 @@ def test_build_skeleton_joint_positions_applies_offset_and_skips_missing_joint()
     np.testing.assert_allclose(positions["Chest"], np.array([1.0, 0.0, 1.5]))
 
 
+def test_build_skeleton_joint_positions_can_scale_positions_around_root():
+    motion_data = {
+        "Root": (np.array([1.0, 2.0, 1.0]), np.array([1.0, 0.0, 0.0, 0.0])),
+        "Chest": (np.array([1.0, 2.0, 2.0]), np.array([1.0, 0.0, 0.0, 0.0])),
+    }
+
+    positions = build_skeleton_joint_positions(
+        motion_data,
+        ["Root", "Chest"],
+        root_name="Root",
+        position_scale=0.5,
+    )
+
+    np.testing.assert_allclose(positions["Root"], np.array([1.0, 2.0, 1.0]))
+    np.testing.assert_allclose(positions["Chest"], np.array([1.0, 2.0, 1.5]))
+
+
 def test_build_skeleton_bone_segments_skips_missing_parent_or_child():
     motion_data = {
         "Root": (np.array([0.0, 0.0, 1.0]), np.array([1.0, 0.0, 0.0, 0.0])),
@@ -95,6 +112,8 @@ def test_normalize_skeleton_payload_fills_defaults():
     assert payload["show_frames"] is False
     assert payload["frame_scale"] == pytest.approx(0.025)
     assert payload["frame_arrow_width"] == pytest.approx(0.0015)
+    assert payload["position_scale"] == pytest.approx(1.0)
+    assert payload["root_name"] is None
 
 
 from general_motion_retargeting.utils.lafan1 import load_bvh_file
@@ -173,6 +192,8 @@ def test_make_human_skeleton_payloads_returns_raw_and_scaled_overlays():
     assert payloads[0]["bone_width"] == pytest.approx(0.004)
     assert payloads[0]["frame_scale"] == pytest.approx(0.03)
     assert "pos_offset" not in payloads[1]
+    assert payloads[1]["position_scale"] == pytest.approx(0.5)
+    assert payloads[1]["root_name"] == "Root"
 
 
 def test_make_human_skeleton_payloads_aligns_raw_root_to_scaled_root():
