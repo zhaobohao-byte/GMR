@@ -67,6 +67,7 @@ class RobotMotionViewer:
         self.motion_fps = motion_fps
         self.rate_limiter = RateLimiter(frequency=self.motion_fps, warn=False)
         self.camera_follow = camera_follow
+        self._camera_initialized = False
         self.record_video = record_video
 
 
@@ -105,7 +106,7 @@ class RobotMotionViewer:
             human_pos_offset=np.array([0.0, 0.0, 0]),
             # rate limit
             rate_limit=True, 
-            follow_camera=True,
+            follow_camera=False,
             ):
         """
         by default visualize robot motion.
@@ -123,11 +124,12 @@ class RobotMotionViewer:
         
         mj.mj_forward(self.model, self.data)
         
-        if follow_camera:
+        if follow_camera and not self._camera_initialized:
             self.viewer.cam.lookat = self.data.xpos[self.model.body(self.robot_base).id]
             self.viewer.cam.distance = self.viewer_cam_distance
             self.viewer.cam.elevation = -10  # 正面视角，轻微向下看
             # self.viewer.cam.azimuth = 180    # 正面朝向机器人
+            self._camera_initialized = True
         
         if human_motion_data is not None:
             # Clean custom geometry
