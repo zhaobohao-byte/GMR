@@ -93,8 +93,8 @@ def normalize_skeleton_payload(payload):
     normalized.setdefault("pos_offset", np.zeros(3))
     normalized.setdefault("connect_to_nearest_available", False)
     normalized.setdefault("show_frames", False)
-    normalized.setdefault("frame_scale", 0.05)
-    normalized.setdefault("frame_arrow_width", 0.003)
+    normalized.setdefault("frame_scale", 0.025)
+    normalized.setdefault("frame_arrow_width", 0.0015)
     normalized["pos_offset"] = np.asarray(normalized["pos_offset"])
     return normalized
 
@@ -110,8 +110,8 @@ def _draw_skeleton(
     pos_offset=None,
     connect_to_nearest_available=False,
     show_frames=False,
-    frame_scale=0.05,
-    frame_arrow_width=0.003,
+    frame_scale=0.025,
+    frame_arrow_width=0.0015,
 ):
     joint_positions = build_skeleton_joint_positions(motion_data, joint_names, pos_offset)
     if pos_offset is None:
@@ -254,7 +254,7 @@ class RobotMotionViewer:
             # robot body frames to compare with GMR targets
             robot_body_names=None,
             show_robot_body_name=False,
-            robot_frame_scale=0.06,
+            robot_frame_scale=0.03,
             human_skeletons=None,
             # rate limit
             rate_limit=True, 
@@ -310,7 +310,7 @@ class RobotMotionViewer:
                     self.viewer,
                     robot_frame_scale,
                     joint_name=robot_body_name if show_robot_body_name else None,
-                    arrow_width=0.003,
+                    arrow_width=0.0015,
                     )
 
         if human_skeletons is not None:

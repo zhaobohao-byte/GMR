@@ -93,8 +93,8 @@ def test_normalize_skeleton_payload_fills_defaults():
     assert payload["bone_width"] == pytest.approx(0.01)
     np.testing.assert_allclose(payload["pos_offset"], np.zeros(3))
     assert payload["show_frames"] is False
-    assert payload["frame_scale"] == pytest.approx(0.05)
-    assert payload["frame_arrow_width"] == pytest.approx(0.003)
+    assert payload["frame_scale"] == pytest.approx(0.025)
+    assert payload["frame_arrow_width"] == pytest.approx(0.0015)
 
 
 from general_motion_retargeting.utils.lafan1 import load_bvh_file
@@ -169,7 +169,7 @@ def test_make_human_skeleton_payloads_returns_raw_and_scaled_overlays():
     np.testing.assert_array_equal(payloads[1]["parents"], np.array([-1]))
     np.testing.assert_allclose(payloads[0]["pos_offset"], np.array([0.0, 0.0, 0.2]))
     assert payloads[0]["show_frames"] is True
-    assert payloads[0]["frame_scale"] == pytest.approx(0.06)
+    assert payloads[0]["frame_scale"] == pytest.approx(0.03)
     assert "pos_offset" not in payloads[1]
 
 
@@ -214,11 +214,11 @@ def test_make_robot_frame_overlay_options_emphasizes_json_frame_axes_with_skelet
     options = make_robot_frame_overlay_options(show_skeleton=True, show_robot_body_name=False)
 
     assert options["show_robot_body_name"] is False
-    assert options["robot_frame_scale"] == pytest.approx(0.12)
+    assert options["robot_frame_scale"] == pytest.approx(0.06)
 
 
 def test_make_robot_frame_overlay_options_can_label_frames_without_skeleton():
     options = make_robot_frame_overlay_options(show_skeleton=False, show_robot_body_name=True)
 
     assert options["show_robot_body_name"] is True
-    assert options["robot_frame_scale"] == pytest.approx(0.06)
+    assert options["robot_frame_scale"] == pytest.approx(0.03)

@@ -53,8 +53,8 @@ def make_human_skeleton_payloads(raw_frame, scaled_frame, metadata):
             "bone_width": 0.008,
             "pos_offset": raw_pos_offset,
             "show_frames": True,
-            "frame_scale": 0.06,
-            "frame_arrow_width": 0.003,
+            "frame_scale": 0.03,
+            "frame_arrow_width": 0.0015,
         },
         {
             "motion_data": scaled_frame,
@@ -71,7 +71,7 @@ def make_human_skeleton_payloads(raw_frame, scaled_frame, metadata):
 def make_robot_frame_overlay_options(show_skeleton=False, show_robot_body_name=False):
     return {
         "show_robot_body_name": show_robot_body_name,
-        "robot_frame_scale": 0.12 if show_skeleton else 0.06,
+        "robot_frame_scale": 0.06 if show_skeleton else 0.03,
     }
 
 
