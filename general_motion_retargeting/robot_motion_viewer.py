@@ -44,6 +44,37 @@ def draw_frame(
         v.user_scn.ngeom += 1
 
 
+def build_skeleton_joint_positions(motion_data, joint_names, pos_offset=None):
+    if pos_offset is None:
+        pos_offset = np.zeros(3)
+    pos_offset = np.asarray(pos_offset)
+
+    joint_positions = {}
+    for joint_name in joint_names:
+        if joint_name not in motion_data:
+            continue
+        pos, _ = motion_data[joint_name]
+        joint_positions[joint_name] = np.asarray(pos) + pos_offset
+    return joint_positions
+
+
+def build_skeleton_bone_segments(motion_data, joint_names, parents, pos_offset=None):
+    if len(joint_names) != len(parents):
+        raise ValueError("joint_names and parents must have the same length")
+
+    joint_positions = build_skeleton_joint_positions(motion_data, joint_names, pos_offset)
+    segments = []
+    for child_index, parent_index in enumerate(parents):
+        if parent_index < 0:
+            continue
+        parent_name = joint_names[int(parent_index)]
+        child_name = joint_names[child_index]
+        if parent_name not in joint_positions or child_name not in joint_positions:
+            continue
+        segments.append((parent_name, child_name, joint_positions[parent_name], joint_positions[child_name]))
+    return segments
+
+
 def get_gmr_robot_body_names(retargeter):
     """Return robot bodies that are enabled and weighted in GMR IK tasks."""
     robot_body_names = []
