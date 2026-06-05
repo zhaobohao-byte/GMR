@@ -7,6 +7,7 @@ import numpy as np
 
 from general_motion_retargeting import GeneralMotionRetargeting as GMR
 from general_motion_retargeting import RobotMotionViewer
+from general_motion_retargeting.robot_motion_viewer import get_gmr_robot_body_names
 from general_motion_retargeting.utils.smpl import load_gvhmr_pred_file, get_gvhmr_data_offline_fast
 
 from rich import print
@@ -84,6 +85,8 @@ if __name__ == "__main__":
         tgt_robot=args.robot,
     )
     
+    gmr_robot_body_names = get_gmr_robot_body_names(retarget)
+
     robot_motion_viewer = RobotMotionViewer(robot_type=args.robot,
                                             motion_fps=aligned_fps,
                                             transparent_robot=0,
@@ -135,6 +138,7 @@ if __name__ == "__main__":
             root_rot=qpos[3:7],
             dof_pos=qpos[7:],
             human_motion_data=retarget.scaled_human_data,
+            robot_body_names=gmr_robot_body_names,
             # human_motion_data=smplx_data,
             human_pos_offset=np.array([0.0, 0.0, 0.0]),
             show_human_body_name=False,
