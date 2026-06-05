@@ -95,7 +95,7 @@ def test_normalize_skeleton_payload_fills_defaults():
 
 
 from general_motion_retargeting.utils.lafan1 import load_bvh_file
-from scripts.bvh_to_robot import make_human_skeleton_payloads
+from scripts.bvh_to_robot import make_human_skeleton_payloads, make_robot_frame_overlay_options
 
 
 class FakeAnim:
@@ -203,3 +203,17 @@ def test_make_human_skeleton_payloads_adds_scaled_helper_feet_and_compressed_edg
     assert scaled_payload["connect_to_nearest_available"] is True
     assert scaled_payload["joint_names"] == ["Hips", "LeftUpLeg", "LeftLeg", "LeftFoot", "LeftFootMod"]
     np.testing.assert_array_equal(scaled_payload["parents"], np.array([-1, 0, 1, 2, 2]))
+
+
+def test_make_robot_frame_overlay_options_emphasizes_json_frames_with_skeleton():
+    options = make_robot_frame_overlay_options(show_skeleton=True, show_robot_body_name=False)
+
+    assert options["show_robot_body_name"] is True
+    assert options["robot_frame_scale"] == pytest.approx(0.12)
+
+
+def test_make_robot_frame_overlay_options_can_label_frames_without_skeleton():
+    options = make_robot_frame_overlay_options(show_skeleton=False, show_robot_body_name=True)
+
+    assert options["show_robot_body_name"] is True
+    assert options["robot_frame_scale"] == pytest.approx(0.06)

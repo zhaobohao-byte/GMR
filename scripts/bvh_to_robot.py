@@ -65,6 +65,13 @@ def make_human_skeleton_payloads(raw_frame, scaled_frame, metadata):
     ]
 
 
+def make_robot_frame_overlay_options(show_skeleton=False, show_robot_body_name=False):
+    return {
+        "show_robot_body_name": show_robot_body_name or show_skeleton,
+        "robot_frame_scale": 0.12 if show_skeleton else 0.06,
+    }
+
+
 if __name__ == "__main__":
     
     HERE = pathlib.Path(__file__).parent
@@ -130,6 +137,13 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--show_robot_body_name",
+        action="store_true",
+        default=False,
+        help="Label robot body frames referenced by the IK JSON.",
+    )
+
+    parser.add_argument(
         "--save_path",
         default=None,
         help="Path to save the robot motion.",
@@ -177,6 +191,10 @@ if __name__ == "__main__":
     motion_fps = args.motion_fps
     
     gmr_robot_body_names = get_gmr_robot_body_names(retargeter)
+    robot_frame_options = make_robot_frame_overlay_options(
+        show_skeleton=args.show_skeleton,
+        show_robot_body_name=args.show_robot_body_name,
+    )
 
     robot_motion_viewer = None
     if not args.headless:
@@ -243,6 +261,8 @@ if __name__ == "__main__":
                 dof_pos=qpos[7:],
                 human_motion_data=retargeter.scaled_human_data,
                 robot_body_names=gmr_robot_body_names,
+                show_robot_body_name=robot_frame_options["show_robot_body_name"],
+                robot_frame_scale=robot_frame_options["robot_frame_scale"],
                 human_skeletons=human_skeletons,
                 rate_limit=args.rate_limit,
                 follow_camera=True,
