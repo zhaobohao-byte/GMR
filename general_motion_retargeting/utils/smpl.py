@@ -11,24 +11,33 @@ def load_smpl_file(smpl_file):
     smpl_data = np.load(smpl_file, allow_pickle=True)
     return smpl_data
 
+def get_pose_body(smplx_data):
+    if "pose_body" in smplx_data:
+        return smplx_data["pose_body"]
+    if "poses" in smplx_data:
+        return smplx_data["poses"][:, 3:66]
+    raise KeyError("SMPL-X data must contain either 'pose_body' or 'poses'")
+
 def load_smplx_file(smplx_file, smplx_body_model_path):
     smplx_data = np.load(smplx_file, allow_pickle=True)
+    pose_body = get_pose_body(smplx_data)
     body_model = smplx.create(
         smplx_body_model_path,
         "smplx",
         gender=str(smplx_data["gender"]),
         use_pca=False,
+        ext="pkl",
     )
     # print(smplx_data["pose_body"].shape)
     # print(smplx_data["betas"].shape)
     # print(smplx_data["root_orient"].shape)
     # print(smplx_data["trans"].shape)
     
-    num_frames = smplx_data["pose_body"].shape[0]
+    num_frames = pose_body.shape[0]
     smplx_output = body_model(
         betas=torch.tensor(smplx_data["betas"]).float().view(1, -1), # (16,)
         global_orient=torch.tensor(smplx_data["root_orient"]).float(), # (N, 3)
-        body_pose=torch.tensor(smplx_data["pose_body"]).float(), # (N, 63)
+        body_pose=torch.tensor(pose_body).float(), # (N, 63)
         transl=torch.tensor(smplx_data["trans"]).float(), # (N, 3)
         left_hand_pose=torch.zeros(num_frames, 45).float(),
         right_hand_pose=torch.zeros(num_frames, 45).float(),
@@ -78,6 +87,7 @@ def load_gvhmr_pred_file(gvhmr_pred_file, smplx_body_model_path):
         "smplx",
         gender="neutral",
         use_pca=False,
+        ext="pkl",
     )
     
     num_frames = smpl_params_global['body_pose'].shape[0]
@@ -179,7 +189,8 @@ def get_smplx_data_offline_fast(smplx_data, body_model, smplx_output, tgt_fps=30
     """
     src_fps = smplx_data["mocap_frame_rate"].item()
     frame_skip = int(src_fps / tgt_fps)
-    num_frames = smplx_data["pose_body"].shape[0]
+    pose_body = get_pose_body(smplx_data)
+    num_frames = pose_body.shape[0]
     global_orient = smplx_output.global_orient.squeeze()
     full_body_pose = smplx_output.full_pose.reshape(num_frames, -1, 3)
     joints = smplx_output.joints.detach().numpy().squeeze()

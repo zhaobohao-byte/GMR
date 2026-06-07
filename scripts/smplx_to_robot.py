@@ -4,12 +4,65 @@ import os
 import time
 
 import numpy as np
+from smplx.joint_names import JOINT_NAMES
+from tqdm import tqdm
 
 from general_motion_retargeting import GeneralMotionRetargeting as GMR
 from general_motion_retargeting import RobotMotionViewer
+from general_motion_retargeting.robot_motion_viewer import get_gmr_robot_body_names
 from general_motion_retargeting.utils.smpl import load_smplx_file, get_smplx_data_offline_fast
 
 from rich import print
+
+
+def make_smplx_skeleton_metadata(body_model):
+    joint_names = JOINT_NAMES[: len(body_model.parents)]
+    return {
+        "joint_names": list(joint_names),
+        "parents": np.asarray(body_model.parents, dtype=int),
+    }
+
+
+def make_raw_skeleton_pos_offset(raw_frame, scaled_frame, metadata):
+    root_name = metadata["joint_names"][0]
+    if root_name not in raw_frame or root_name not in scaled_frame:
+        return np.zeros(3)
+    return np.asarray(scaled_frame[root_name][0]) - np.asarray(raw_frame[root_name][0])
+
+
+def make_human_skeleton_payloads(raw_frame, scaled_frame, metadata):
+    raw_pos_offset = make_raw_skeleton_pos_offset(raw_frame, scaled_frame, metadata)
+    return [
+        {
+            "motion_data": raw_frame,
+            "joint_names": metadata["joint_names"],
+            "parents": metadata["parents"],
+            "rgba": [1.0, 0.45, 0.05, 0.45],
+            "joint_radius": 0.008,
+            "bone_width": 0.004,
+            "pos_offset": raw_pos_offset,
+            "show_frames": True,
+            "frame_scale": 0.03,
+            "frame_arrow_width": 0.0015,
+        },
+        {
+            "motion_data": scaled_frame,
+            "joint_names": metadata["joint_names"],
+            "parents": metadata["parents"],
+            "rgba": [0.05, 0.75, 1.0, 0.75],
+            "joint_radius": 0.009,
+            "bone_width": 0.005,
+            "connect_to_nearest_available": True,
+        },
+    ]
+
+
+def make_robot_frame_overlay_options(show_skeleton=False, show_robot_body_name=False):
+    return {
+        "show_robot_body_name": show_robot_body_name,
+        "robot_frame_scale": 0.06 if show_skeleton else 0.03,
+    }
+
 
 if __name__ == "__main__":
     
@@ -58,10 +111,51 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--video_path",
+        type=str,
+        default=None,
+    )
+
+    parser.add_argument(
         "--rate_limit",
         default=False,
         action="store_true",
         help="Limit the rate of the retargeted robot motion to keep the same as the human motion.",
+    )
+
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        default=False,
+        help="Run retargeting without opening the realtime viewer.",
+    )
+
+    parser.add_argument(
+        "--show_skeleton",
+        action="store_true",
+        default=False,
+        help="Overlay raw and scaled SMPL-X skeletons in the realtime viewer.",
+    )
+
+    parser.add_argument(
+        "--show_robot_body_name",
+        action="store_true",
+        default=False,
+        help="Label robot body frames referenced by the IK JSON.",
+    )
+
+    parser.add_argument(
+        "--show_human_body_name",
+        action="store_true",
+        default=False,
+        help="Label scaled human target frames.",
+    )
+
+    parser.add_argument(
+        "--hot_reload_ik_config",
+        action="store_true",
+        default=False,
+        help="Reload the IK JSON when it changes while the viewer is running.",
     )
 
     args = parser.parse_args()
@@ -81,20 +175,30 @@ if __name__ == "__main__":
     
    
     # Initialize the retargeting system
-    retarget = GMR(
+    retargeter = GMR(
         actual_human_height=actual_human_height,
         src_human="smplx",
         tgt_robot=args.robot,
     )
-    
-    robot_motion_viewer = RobotMotionViewer(robot_type=args.robot,
-                                            motion_fps=aligned_fps,
-                                            transparent_robot=0,
-                                            record_video=args.record_video,
-                                            video_path=f"videos/{args.robot}_{args.smplx_file.split('/')[-1].split('.')[0]}.mp4",)
-    
 
-    curr_frame = 0
+    skeleton_metadata = make_smplx_skeleton_metadata(body_model) if args.show_skeleton else None
+    gmr_robot_body_names = get_gmr_robot_body_names(retargeter)
+    robot_frame_options = make_robot_frame_overlay_options(
+        show_skeleton=args.show_skeleton,
+        show_robot_body_name=args.show_robot_body_name,
+    )
+
+    robot_motion_viewer = None
+    if not args.headless:
+        video_path = args.video_path
+        if video_path is None:
+            video_path = f"videos/{args.robot}_{args.smplx_file.split('/')[-1].split('.')[0]}.mp4"
+        robot_motion_viewer = RobotMotionViewer(robot_type=args.robot,
+                                                motion_fps=aligned_fps,
+                                                transparent_robot=0,
+                                                record_video=args.record_video,
+                                                video_path=video_path,)
+    
     # FPS measurement variables
     fps_counter = 0
     fps_start_time = time.time()
@@ -106,17 +210,12 @@ if __name__ == "__main__":
             os.makedirs(save_dir, exist_ok=True)
         qpos_list = []
     
-    # Start the viewer
+    print(f"mocap_frame_rate: {aligned_fps}")
+    pbar = tqdm(total=len(smplx_data_frames), desc="Retargeting")
+
     i = 0
 
     while True:
-        if args.loop:
-            i = (i + 1) % len(smplx_data_frames)
-        else:
-            i += 1
-            if i >= len(smplx_data_frames):
-                break
-        
         # FPS measurement
         fps_counter += 1
         current_time = time.time()
@@ -126,24 +225,55 @@ if __name__ == "__main__":
             fps_counter = 0
             fps_start_time = current_time
         
+        pbar.update(1)
+
         # Update task targets.
         smplx_data = smplx_data_frames[i]
 
+        if args.hot_reload_ik_config:
+            try:
+                if retargeter.reload_ik_config_if_changed():
+                    gmr_robot_body_names = get_gmr_robot_body_names(retargeter)
+                    print(f"[GMR] Hot reloaded IK config: {retargeter.ik_config_path}")
+            except Exception as exc:
+                print(f"[GMR] IK config hot reload skipped: {exc}")
+
         # retarget
-        qpos = retarget.retarget(smplx_data)
+        qpos = retargeter.retarget(smplx_data)
 
         # visualize
-        robot_motion_viewer.step(
-            root_pos=qpos[:3],
-            root_rot=qpos[3:7],
-            dof_pos=qpos[7:],
-            human_motion_data=retarget.scaled_human_data,
-            # human_motion_data=smplx_data,
-            human_pos_offset=np.array([0.0, 0.0, 0.0]),
-            show_human_body_name=False,
-            rate_limit=args.rate_limit,
-            follow_camera=False,
-        )
+        if robot_motion_viewer is not None:
+            human_skeletons = None
+            if args.show_skeleton:
+                if skeleton_metadata is None:
+                    raise RuntimeError("--show_skeleton requires SMPL-X skeleton metadata")
+                human_skeletons = make_human_skeleton_payloads(
+                    smplx_data,
+                    retargeter.scaled_human_data,
+                    skeleton_metadata,
+                )
+
+            robot_motion_viewer.step(
+                root_pos=qpos[:3],
+                root_rot=qpos[3:7],
+                dof_pos=qpos[7:],
+                human_motion_data=retargeter.scaled_human_data,
+                robot_body_names=gmr_robot_body_names,
+                show_robot_body_name=robot_frame_options["show_robot_body_name"],
+                robot_frame_scale=robot_frame_options["robot_frame_scale"],
+                human_skeletons=human_skeletons,
+                show_human_body_name=args.show_human_body_name,
+                rate_limit=args.rate_limit,
+                follow_camera=True,
+            )
+
+        if args.loop:
+            i = (i + 1) % len(smplx_data_frames)
+        else:
+            i += 1
+            if i >= len(smplx_data_frames):
+                break
+
         if args.save_path is not None:
             qpos_list.append(qpos)
             
@@ -170,4 +300,7 @@ if __name__ == "__main__":
             
       
     
-    robot_motion_viewer.close()
+    pbar.close()
+
+    if robot_motion_viewer is not None:
+        robot_motion_viewer.close()
