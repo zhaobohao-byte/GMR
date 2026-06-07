@@ -53,47 +53,17 @@ class GeneralMotionRetargeting:
             if verbose:
                 print(f"Motor ID {i}: {motor_name}")
 
-        # Load the IK config
-        with open(IK_CONFIG_DICT[src_human][tgt_robot]) as f:
-            ik_config = json.load(f)
-        if verbose:
-            print("Use IK config: ", IK_CONFIG_DICT[src_human][tgt_robot])
-        
-        # compute the scale ratio based on given human height and the assumption in the IK config
-        if actual_human_height is not None:
-            ratio = actual_human_height / ik_config["human_height_assumption"]
-        else:
-            ratio = 1.0
-            
-        # adjust the human scale table
-        for key in ik_config["human_scale_table"].keys():
-            ik_config["human_scale_table"][key] = ik_config["human_scale_table"][key] * ratio
-    
-
-        # used for retargeting
-        self.ik_match_table1 = ik_config["ik_match_table1"]
-        self.ik_match_table2 = ik_config["ik_match_table2"]
-        self.human_root_name = ik_config["human_root_name"]
-        self.robot_root_name = ik_config["robot_root_name"]
-        self.use_ik_match_table1 = ik_config["use_ik_match_table1"]
-        self.use_ik_match_table2 = ik_config["use_ik_match_table2"]
-        self.human_scale_table = ik_config["human_scale_table"]
-        self.ground = ik_config["ground_height"] * np.array([0, 0, 1])
+        self.src_human = src_human
+        self.tgt_robot = tgt_robot
+        self.actual_human_height = actual_human_height
+        self.ik_config_path = IK_CONFIG_DICT[src_human][tgt_robot]
+        self.ik_config_mtime_ns = None
+        self.load_ik_config(verbose=verbose)
 
         self.max_iter = 10
 
         self.solver = solver
         self.damping = damping
-
-        self.human_body_to_task1 = {}
-        self.human_body_to_task2 = {}
-        self.pos_offsets1 = {}
-        self.rot_offsets1 = {}
-        self.pos_offsets2 = {}
-        self.rot_offsets2 = {}
-
-        self.task_errors1 = {}
-        self.task_errors2 = {}
 
         self.ik_limits = [mink.ConfigurationLimit(self.model)]
         if use_velocity_limit:
@@ -104,9 +74,52 @@ class GeneralMotionRetargeting:
         
         self.ground_offset = 0.0
 
+    def load_ik_config(self, verbose=False):
+        with open(self.ik_config_path) as f:
+            ik_config = json.load(f)
+        if verbose:
+            print("Use IK config: ", self.ik_config_path)
+
+        if self.actual_human_height is not None:
+            ratio = self.actual_human_height / ik_config["human_height_assumption"]
+        else:
+            ratio = 1.0
+
+        for key in ik_config["human_scale_table"].keys():
+            ik_config["human_scale_table"][key] = ik_config["human_scale_table"][key] * ratio
+
+        self.ik_match_table1 = ik_config["ik_match_table1"]
+        self.ik_match_table2 = ik_config["ik_match_table2"]
+        self.human_root_name = ik_config["human_root_name"]
+        self.robot_root_name = ik_config["robot_root_name"]
+        self.use_ik_match_table1 = ik_config["use_ik_match_table1"]
+        self.use_ik_match_table2 = ik_config["use_ik_match_table2"]
+        self.human_scale_table = ik_config["human_scale_table"]
+        self.ground = ik_config["ground_height"] * np.array([0, 0, 1])
+        self.ik_config_mtime_ns = self.ik_config_path.stat().st_mtime_ns
+
+    def reload_ik_config_if_changed(self, verbose=True):
+        current_mtime_ns = self.ik_config_path.stat().st_mtime_ns
+        if current_mtime_ns == self.ik_config_mtime_ns:
+            return False
+
+        self.load_ik_config(verbose=verbose)
+        self.setup_retarget_tasks()
+        return True
+
     def setup_retarget_configuration(self):
         self.configuration = mink.Configuration(self.model)
-    
+        self.setup_retarget_tasks()
+
+    def setup_retarget_tasks(self):
+        self.human_body_to_task1 = {}
+        self.human_body_to_task2 = {}
+        self.pos_offsets1 = {}
+        self.rot_offsets1 = {}
+        self.pos_offsets2 = {}
+        self.rot_offsets2 = {}
+        self.task_errors1 = {}
+        self.task_errors2 = {}
         self.tasks1 = []
         self.tasks2 = []
         

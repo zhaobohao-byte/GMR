@@ -147,6 +147,13 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--hot_reload_ik_config",
+        action="store_true",
+        default=False,
+        help="Reload the IK JSON when it changes while the viewer is running.",
+    )
+
+    parser.add_argument(
         "--save_path",
         default=None,
         help="Path to save the robot motion.",
@@ -241,6 +248,14 @@ if __name__ == "__main__":
 
         # Update task targets.
         smplx_data = lafan1_data_frames[i]
+
+        if args.hot_reload_ik_config:
+            try:
+                if retargeter.reload_ik_config_if_changed():
+                    gmr_robot_body_names = get_gmr_robot_body_names(retargeter)
+                    print(f"[GMR] Hot reloaded IK config: {retargeter.ik_config_path}")
+            except Exception as exc:
+                print(f"[GMR] IK config hot reload skipped: {exc}")
 
         # retarget
         qpos = retargeter.retarget(smplx_data)
