@@ -4,12 +4,14 @@ cd "$(dirname "$0")/../.."
 # bvh
 # python scripts/bvh_to_robot.py --bvh_file motion_data/TPOS.bvh --format lafan1 --robot ultra --rate_limit --loop "$@"
 python scripts/bvh_to_robot.py \
-    --bvh_file motion_data/selected_motions/run1_subject5.bvh \
+    --bvh_file /home/bobby/gmr/GMR/motion_data/selected_motions/straight_sprint_bvh/sprint1_subject4_5978_6058.bvh \
     --format lafan1 \
     --robot ultra \
     --rate_limit \
     --show_skeleton \
-    --loop "$@"
+    --save_path motion_data/sprint1_subject4_5978_6058.pkl \
+     # --loop \
+    "$@"
 
 
 # 命令行参数：
