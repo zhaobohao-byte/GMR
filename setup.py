@@ -21,6 +21,7 @@ setup(
     "rich",
     "tqdm",
     "opencv-python",
+    "matplotlib",
     "natsort",
     "psutil",
     "smplx @ git+https://github.com/vchoutas/smplx",
